@@ -108,8 +108,8 @@ Open the forwarded port (Codespaces "Ports" tab) and confirm the page loads.
 Here is the default Next.js starter page you should see:
 
 > [SCREENSHOT PLACEHOLDER — After running the dev server, capture the Next.js starter page and save a screenshot here.]
-
-
+![alt text](image.png)
+![alt text](image-1.png)
 
 ### Add a minimal UI 
 
@@ -140,6 +140,7 @@ This component is the starting page of the AI Summary App. When the page loads, 
 Visit the app in your browser again to verify the changes took effect.
 
 > [SCREENSHOT PLACEHOLDER — After updating `app/page.tsx`, capture a screenshot of the minimal UI and save it here.]
+![alt text](image-2.png)
 
 Start a new terminal
 Let's commit this frontend scaffold as our first feature:
@@ -167,6 +168,7 @@ vercel login
 ```
 
 > [SCREENSHOT PLACEHOLDER — After logging into Vercel (or running `vercel login`), capture the login prompt and save a screenshot here.]
+![alt text](image-3.png)
 
 Now deploy the app from the `my-app/` folder
 
@@ -318,7 +320,7 @@ Example output:
 
 > [SCREENSHOT PLACEHOLDER — After clicking the backend check button, capture the health-check output and save a screenshot here.]
 
-
+![alt text](image-4.png)
 **Commit checkpoint:**
 
 ```bash
