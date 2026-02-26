@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "postinstall": "cp node_modules/pdfjs-dist/build/pdf.worker.min.mjs public/pdf.worker.min.mjs 2>/dev/null || true",
     "db:verify": "tsx scripts/verify-setup.ts",
     "db:test": "tsx scripts/test-db.ts"
   },

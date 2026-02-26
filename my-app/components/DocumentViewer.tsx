@@ -1,11 +1,19 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Document as ReactPDFDocument, Page, pdfjs } from 'react-pdf';
+import dynamic from 'next/dynamic';
 import { Document } from '@/lib/types/database';
 
-// Set up PDF.js worker
-pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+// 动态导入整个 PDF 渲染组件，避免 SSR 问题
+const PDFRenderer = dynamic(() => import('./PDFRenderer'), {
+  ssr: false,
+  loading: () => (
+    <div className="flex items-center justify-center py-12">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+      <p className="ml-3 text-gray-600">Loading PDF viewer...</p>
+    </div>
+  ),
+});
 
 interface DocumentViewerProps {
   document: Document | null;
@@ -18,14 +26,11 @@ export default function DocumentViewer({ document, userKey, onClose }: DocumentV
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [numPages, setNumPages] = useState<number>(0);
-  const [pageNumber, setPageNumber] = useState(1);
 
   useEffect(() => {
     if (!document) {
       setContent(null);
       setPdfUrl(null);
-      setPageNumber(1);
       return;
     }
 
@@ -63,14 +68,6 @@ export default function DocumentViewer({ document, userKey, onClose }: DocumentV
       setLoading(false);
     }
   };
-
-  const onDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
-    setNumPages(numPages);
-    setPageNumber(1);
-  };
-
-  const goToPrevPage = () => setPageNumber(Math.max(1, pageNumber - 1));
-  const goToNextPage = () => setPageNumber(Math.min(numPages, pageNumber + 1));
 
   if (!document) return null;
 
@@ -130,53 +127,7 @@ export default function DocumentViewer({ document, userKey, onClose }: DocumentV
             )}
 
             {!loading && !error && document.file_type === 'pdf' && pdfUrl && (
-              <div className="space-y-4">
-                <div className="flex items-center justify-center space-x-4 bg-gray-50 p-3 rounded-lg">
-                  <button
-                    onClick={goToPrevPage}
-                    disabled={pageNumber <= 1}
-                    className="px-3 py-1 bg-white border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Previous
-                  </button>
-                  
-                  <span className="text-sm text-gray-700">
-                    Page {pageNumber} of {numPages}
-                  </span>
-                  
-                  <button
-                    onClick={goToNextPage}
-                    disabled={pageNumber >= numPages}
-                    className="px-3 py-1 bg-white border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Next
-                  </button>
-                </div>
-
-                <div className="flex justify-center max-h-96 overflow-y-auto border border-gray-200 rounded-lg">
-                  <ReactPDFDocument
-                    file={pdfUrl}
-                    onLoadSuccess={onDocumentLoadSuccess}
-                    loading={
-                      <div className="flex items-center justify-center py-12">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-                      </div>
-                    }
-                    error={
-                      <div className="p-4 text-red-600">
-                        Failed to load PDF. Please try again.
-                      </div>
-                    }
-                  >
-                    <Page
-                      pageNumber={pageNumber}
-                      renderTextLayer={false}
-                      renderAnnotationLayer={false}
-                      className="max-w-full"
-                    />
-                  </ReactPDFDocument>
-                </div>
-              </div>
+              <PDFRenderer pdfUrl={pdfUrl} />
             )}
           </div>
 

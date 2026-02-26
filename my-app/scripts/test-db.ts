@@ -187,16 +187,21 @@ async function testDatabaseSetup() {
     console.log('\n🔟 Checking RLS policies...');
     try {
       // Try to access data with anon key (should fail with RLS)
-      const anonClient = createClient(supabaseUrl, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '');
-      const { error: rlsError } = await anonClient
-        .from('users')
-        .select('*')
-        .limit(1);
-      
-      if (rlsError) {
-        console.log(`   ✅ RLS is working: anon access denied`);
+      const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+      if (!anonKey || !supabaseUrl) {
+        console.log('⚠️  Warning: NEXT_PUBLIC_SUPABASE_ANON_KEY not set, skipping RLS test');
       } else {
-        console.log(`   ⚠️  RLS might not be properly configured`);
+        const anonClient = createClient(supabaseUrl, anonKey);
+        const { error: rlsError } = await anonClient
+          .from('users')
+          .select('*')
+          .limit(1);
+      
+        if (rlsError) {
+          console.log(`   ✅ RLS is working: anon access denied`);
+        } else {
+          console.log(`   ⚠️  RLS might not be properly configured`);
+        }
       }
     } catch (e) {
       console.log(`   ℹ️  RLS check skipped`);

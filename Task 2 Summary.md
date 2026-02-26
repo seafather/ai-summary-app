@@ -18,8 +18,14 @@ first, to create a product, the first important thing is confirm the requirement
 next,when we have a complete requirements document, then we can start letting AI design a new database. Then we go in and modify it, which is the most important step, because usually we don't provide too many details, leading to AI having an information gap, not knowing what is unnecessary to do and what is necessary, and then AI will complete it. We will provide feedback, allowing AI to go back and modify, and refactor.
 ![alt text](image-5.png)
 ◊
-after finished the database diagram, copy and create it on supabase website.
+after finished the database diagram, copy the sql command and create it on supabase website.
 ![alt text](image-6.png)
+![alt text](image-7.png)
+
+now, we can implement the design though basic requirement.md and database_schema.md.
+As you can see, I uploaded a PDF, and both the website and the database have received it.
+![alt text](image-8.png)
+![alt text](image-9.png)
 
 
 
