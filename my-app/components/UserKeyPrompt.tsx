@@ -54,7 +54,7 @@ export default function UserKeyPrompt({ onUserKeySet }: UserKeyPromptProps) {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 px-4">
+    <div className="min-h-screen flex items-center justify-center bg-gray-100 px-4">
       <div className="max-w-md w-full bg-white rounded-lg shadow-xl p-8 space-y-6">
         <div className="text-center">
           <h1 className="text-3xl font-bold text-gray-900">AI Summary App</h1>

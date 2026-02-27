@@ -20,8 +20,23 @@ export default function PDFRenderer({ pdfUrl }: PDFRendererProps) {
   const [loadedPages, setLoadedPages] = useState<number>(INITIAL_PAGES);
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [pageErrors, setPageErrors] = useState<Record<number, string>>({});
+  const [pageWidth, setPageWidth] = useState(700);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
+
+  // Responsive page width
+  useEffect(() => {
+    const updateWidth = () => {
+      const container = scrollContainerRef.current;
+      if (container) {
+        const w = container.clientWidth - 40; // account for padding
+        setPageWidth(Math.min(Math.max(w, 280), 900));
+      }
+    };
+    updateWidth();
+    window.addEventListener('resize', updateWidth);
+    return () => window.removeEventListener('resize', updateWidth);
+  }, []);
 
   // Reset state when URL changes
   useEffect(() => {
@@ -83,7 +98,7 @@ export default function PDFRenderer({ pdfUrl }: PDFRendererProps) {
   const pagesToRender = Math.min(loadedPages, numPages);
 
   return (
-    <div className="space-y-4">
+    <div className="flex flex-col h-full space-y-4">
       {/* Progress indicator */}
       {numPages > 0 && (
         <div className="flex items-center justify-between bg-white p-3 rounded-lg border border-gray-200">
@@ -114,11 +129,11 @@ export default function PDFRenderer({ pdfUrl }: PDFRendererProps) {
       )}
 
       {/* PDF container */}
-      <div className="relative">
+      <div className="relative flex-grow flex flex-col min-h-0">
         <div
           ref={scrollContainerRef}
           onScroll={handleScroll}
-          className="max-h-[600px] overflow-y-auto border border-gray-200 rounded-lg bg-white p-4"
+          className="flex-grow overflow-y-auto border border-gray-200 rounded-lg bg-white p-4"
         >
           <Document
             file={pdfUrl}
@@ -147,7 +162,7 @@ export default function PDFRenderer({ pdfUrl }: PDFRendererProps) {
                   >
                     <div className="bg-white shadow-md border border-gray-100 mb-2">
                       {pageError ? (
-                        <div className="flex flex-col items-center justify-center w-[700px] h-[300px] bg-red-50 text-red-600">
+                        <div className="flex flex-col items-center justify-center bg-red-50 text-red-600 p-8" style={{ width: pageWidth, minHeight: 200 }}>
                           <p className="text-sm font-medium mb-2">
                             Failed to render page {pageNum}
                           </p>
@@ -158,11 +173,11 @@ export default function PDFRenderer({ pdfUrl }: PDFRendererProps) {
                           pageNumber={pageNum}
                           renderTextLayer={false}
                           renderAnnotationLayer={false}
-                          width={700}
+                          width={pageWidth}
                           onLoadError={(err) => handlePageError(pageNum, err)}
                           onRenderError={(err) => handlePageError(pageNum, err)}
                           loading={
-                            <div className="flex items-center justify-center w-[700px] h-[400px] bg-gray-50">
+                            <div className="flex items-center justify-center bg-gray-50" style={{ width: pageWidth, height: pageWidth * 1.4 }}>
                               <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
                             </div>
                           }

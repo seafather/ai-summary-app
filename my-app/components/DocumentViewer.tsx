@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { Document } from '@/lib/types/database';
+import SummaryPanel from './SummaryPanel';
 
 // 动态导入整个 PDF 渲染组件，避免 SSR 问题
 const PDFRenderer = dynamic(() => import('./PDFRenderer'), {
@@ -15,6 +16,8 @@ const PDFRenderer = dynamic(() => import('./PDFRenderer'), {
   ),
 });
 
+type ViewTab = 'document' | 'summary';
+
 interface DocumentViewerProps {
   document: Document | null;
   userKey: string;
@@ -26,6 +29,7 @@ export default function DocumentViewer({ document, userKey, onClose }: DocumentV
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<ViewTab>('document');
 
   useEffect(() => {
     if (!document) {
@@ -81,9 +85,9 @@ export default function DocumentViewer({ document, userKey, onClose }: DocumentV
         />
 
         {/* Modal panel */}
-        <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full">
+        <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-5xl sm:w-full max-h-[90vh] flex flex-col">
           {/* Header */}
-          <div className="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+          <div className="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between flex-shrink-0">
             <div className="flex items-center space-x-3">
               <h3 className="text-lg font-medium text-gray-900 truncate max-w-md">
                 {document.original_filename}
@@ -103,36 +107,80 @@ export default function DocumentViewer({ document, userKey, onClose }: DocumentV
             </button>
           </div>
 
+          {/* Tabs */}
+          <div className="border-b border-gray-200 bg-white flex-shrink-0">
+            <nav className="flex -mb-px">
+              <button
+                onClick={() => setActiveTab('document')}
+                className={`py-3 px-6 text-sm font-medium border-b-2 transition-colors ${
+                  activeTab === 'document'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                <span className="flex items-center">
+                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  Document
+                </span>
+              </button>
+              <button
+                onClick={() => setActiveTab('summary')}
+                className={`py-3 px-6 text-sm font-medium border-b-2 transition-colors ${
+                  activeTab === 'summary'
+                    ? 'border-gray-900 text-gray-900'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                <span className="flex items-center">
+                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                  </svg>
+                  AI Summary
+                </span>
+              </button>
+            </nav>
+          </div>
+
           {/* Content */}
-          <div className="bg-white px-4 pt-5 pb-4 sm:p-6">
-            {loading && (
-              <div className="flex items-center justify-center py-12">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
-                <p className="ml-4 text-gray-600">Loading document...</p>
-              </div>
+          <div className="bg-white px-4 pt-5 pb-4 sm:p-6 overflow-y-auto flex-grow">
+            {activeTab === 'document' && (
+              <>
+                {loading && (
+                  <div className="flex items-center justify-center py-12">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+                    <p className="ml-4 text-gray-600">Loading document...</p>
+                  </div>
+                )}
+
+                {error && (
+                  <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                    <p className="text-red-800">{error}</p>
+                  </div>
+                )}
+
+                {!loading && !error && document.file_type === 'txt' && content && (
+                  <div className="max-h-96 overflow-y-auto">
+                    <pre className="whitespace-pre-wrap font-mono text-sm text-gray-800 bg-gray-50 p-4 rounded-lg">
+                      {content}
+                    </pre>
+                  </div>
+                )}
+
+                {!loading && !error && document.file_type === 'pdf' && pdfUrl && (
+                  <PDFRenderer pdfUrl={pdfUrl} />
+                )}
+              </>
             )}
 
-            {error && (
-              <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-                <p className="text-red-800">{error}</p>
-              </div>
-            )}
-
-            {!loading && !error && document.file_type === 'txt' && content && (
-              <div className="max-h-96 overflow-y-auto">
-                <pre className="whitespace-pre-wrap font-mono text-sm text-gray-800 bg-gray-50 p-4 rounded-lg">
-                  {content}
-                </pre>
-              </div>
-            )}
-
-            {!loading && !error && document.file_type === 'pdf' && pdfUrl && (
-              <PDFRenderer pdfUrl={pdfUrl} />
+            {activeTab === 'summary' && (
+              <SummaryPanel documentId={document.id} userKey={userKey} />
             )}
           </div>
 
           {/* Footer */}
-          <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse border-t border-gray-200">
+          <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse border-t border-gray-200 flex-shrink-0">
             <button
               type="button"
               onClick={onClose}
