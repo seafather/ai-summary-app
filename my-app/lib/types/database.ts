@@ -59,3 +59,11 @@ export interface Summary {
 export type FileType = 'pdf' | 'txt';
 export type Language = 'English' | 'Chinese-Traditional' | 'Chinese-Simplified' | 'Japanese' | 'Spanish' | 'French' | 'German';
 export type SummaryStyle = 'standard' | 'bullet-points' | 'vivid-emoji';
+
+/**
+ * Summary modes tailored to file types.
+ * PDF modes leverage page/chapter structure; TXT modes leverage semantic analysis.
+ */
+export type PdfSummaryMode = 'full-summary' | 'chapter-outline' | 'page-range';
+export type TxtSummaryMode = 'semantic-topics' | 'meeting-minutes';
+export type SummaryMode = PdfSummaryMode | TxtSummaryMode;

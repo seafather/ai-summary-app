@@ -154,7 +154,7 @@ export default function DocumentPanel({ document, userKey }: DocumentPanelProps)
         {/* AI Summary Panel */}
         <div className="bg-white rounded-lg border border-gray-200 overflow-hidden flex flex-col min-h-0">
           <div className="flex-grow overflow-y-auto p-3 sm:p-4 min-h-0">
-            <SummaryPanel documentId={document.id} userKey={userKey} />
+            <SummaryPanel documentId={document.id} userKey={userKey} fileType={document.file_type} />
           </div>
         </div>
       </div>

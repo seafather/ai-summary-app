@@ -40,25 +40,37 @@
     * Once a user selects a PDF/TXT for preview, the system must perform **Text Extraction** in the background.
     * Handle character encoding issues to ensure the extracted text is free of garbled characters.
 
-### 2.2 Custom Summary Configuration (UI/UX)
-* **Description:** Allow users to set AI output preferences before generating a summary.
+### 2.2 File-Type-Aware Summary Mode Selection (UI/UX)
+* **Description:** The system dynamically presents different AI summary modes based on the uploaded file type (PDF vs TXT), leveraging each format's unique characteristics.
 * **Detailed Specifications:**
-    * **Language Selection:** Provide a dropdown or radio buttons for output language (e.g., English, Traditional/Simplified Chinese, Japanese).
-    * **Style & Formatting:** Provide options for users to toggle preferences, such as "Limit to 4 bullet points" or "Use a vivid tone with emojis 😆."
+    * **Dynamic Mode Detection:** When a user selects a document, the system detects the file type and renders the corresponding summary mode options.
+    * **PDF Summary Modes** (leveraging page/chapter structure):
+        * 📑 **Full Summary** — Comprehensive overview of the entire document (Executive Summary, Key Findings, Key Terms, Related Questions).
+        * 📖 **By Chapter / Section** — Detects headings, page breaks, or topic shifts and generates per-chapter summaries with page references.
+        * 🎯 **Page Range** — User specifies a start and end page; AI summarises only that range.
+    * **TXT Summary Modes** (leveraging semantic analysis):
+        * 🧠 **Smart Topic Analysis** — AI identifies 3-6 core themes/topics in the text and organises the summary by topic.
+        * 👥 **Meeting Minutes** — Treats the text as a transcript or discussion log; extracts Key Decisions, Action Items, Discussion Highlights, and Open Questions.
+    * **Language Selection:** Dropdown for output language (English, Traditional/Simplified Chinese, Japanese, Spanish, French, German).
+    * **Style & Formatting:** Toggle between Standard, Bullet Points (with configurable count), or Vivid & Fun with emojis.
 
 ### 2.3 AI Model Invocation (Backend)
-* **Description:** Assemble the text and user settings into a prompt for the AI.
+* **Description:** Assemble the text, file type, selected mode, and user settings into a tailored prompt for the AI.
 * **Detailed Specifications:**
     * Triggered when the user clicks the **"Generate Summary"** button.
     * The backend calls the **GitHub Models API (Model: GPT-4o-mini)**.
-    * The system merges the extracted text with the criteria defined in 2.2 into a comprehensive **System Prompt**.
+    * The system selects a **mode-specific System Prompt** based on the combination of file type and chosen mode (e.g., PDF + Chapter Outline, TXT + Meeting Minutes).
+    * The AI returns **clean Markdown** (not JSON) for direct rendering.
     * Display an "AI is thinking..." loading animation during generation.
 
 ### 2.4 Markdown Renderer and Editor (UI/UX)
-* **Description:** Display AI-generated results clearly and allow user modifications.
+* **Description:** Display AI-generated results as beautifully rendered Markdown and allow user modifications.
 * **Detailed Specifications:**
-    * **Markdown Viewer:** The Markdown syntax returned by the AI (e.g., `#`, `*`, `**bold**`) must be parsed into aesthetic Rich Text.
-    * **Manual Editing:** Provide an **"Edit"** button that toggles the viewer into a text area (Textarea), allowing users to modify the raw AI-generated content directly.
+    * **Markdown Viewer:** The Markdown returned by the AI is parsed into aesthetic Rich Text using a React Markdown renderer.
+    * **Manual Editing:** An **"Edit"** button toggles the viewer into a text area (Textarea) for direct Markdown editing.
+    * **Regenerate:** A **"Regenerate"** button clears the current summary and returns the user to the mode selection screen to choose different settings.
+    * **Copy:** A **"Copy"** button copies the raw Markdown content to the clipboard.
+    * **No raw JSON** is ever exposed to the user — all output is human-readable Markdown.
 
 ---
 

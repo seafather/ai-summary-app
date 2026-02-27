@@ -3,7 +3,7 @@ import { supabaseAdmin } from '@/lib/supabase/server';
 import { getOrCreateUser } from '@/lib/utils/user';
 import { extractText, truncateText } from '@/lib/utils/textExtraction';
 import { generateSummary, SummaryOptions } from '@/lib/utils/aiSummary';
-import { Language, SummaryStyle } from '@/lib/types/database';
+import { Language, SummaryStyle, SummaryMode, FileType } from '@/lib/types/database';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60; // Allow up to 60 seconds for AI generation
@@ -38,8 +38,11 @@ export async function POST(request: NextRequest) {
       documentId, 
       language = 'English', 
       style = 'standard',
+      summaryMode,
+      pageRange,
       maxBulletPoints,
-      customInstructions 
+      customInstructions,
+      forceRegenerate,
     } = body;
 
     if (!documentId) {
@@ -83,6 +86,40 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const fileType: FileType = document.file_type as FileType;
+
+    // Determine summary mode
+    const validPdfModes: SummaryMode[] = ['full-summary', 'chapter-outline', 'page-range'];
+    const validTxtModes: SummaryMode[] = ['semantic-topics', 'meeting-minutes'];
+
+    let resolvedMode: SummaryMode;
+    if (summaryMode) {
+      resolvedMode = summaryMode;
+      if (fileType === 'pdf' && !validPdfModes.includes(resolvedMode)) {
+        return NextResponse.json(
+          { error: `Invalid summary mode for PDF. Valid: ${validPdfModes.join(', ')}` },
+          { status: 400 }
+        );
+      }
+      if (fileType === 'txt' && !validTxtModes.includes(resolvedMode)) {
+        return NextResponse.json(
+          { error: `Invalid summary mode for TXT. Valid: ${validTxtModes.join(', ')}` },
+          { status: 400 }
+        );
+      }
+    } else {
+      resolvedMode = fileType === 'pdf' ? 'full-summary' : 'semantic-topics';
+    }
+
+    if (resolvedMode === 'page-range') {
+      if (!pageRange || typeof pageRange.from !== 'number' || typeof pageRange.to !== 'number') {
+        return NextResponse.json(
+          { error: 'Page range (from, to) is required for page-range mode' },
+          { status: 400 }
+        );
+      }
+    }
+
     // Check if we already have extracted text
     let documentText = document.extracted_text;
 
@@ -103,7 +140,7 @@ export async function POST(request: NextRequest) {
 
       // Extract text
       const buffer = Buffer.from(await fileData.arrayBuffer());
-      documentText = await extractText(buffer, document.file_type as 'pdf' | 'txt');
+      documentText = await extractText(buffer, fileType);
 
       // Save extracted text to database for future use
       await supabaseAdmin
@@ -127,37 +164,38 @@ export async function POST(request: NextRequest) {
     }
 
     // Check for existing summary with same parameters (cache hit)
-    const { data: existingSummary } = await supabaseAdmin
-      .from('summaries')
-      .select('*')
-      .eq('document_id', documentId)
-      .eq('user_id', user.id)
-      .eq('language', language)
-      .eq('style', style)
-      .eq('is_active', true)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .single();
+    if (!forceRegenerate) {
+      const { data: existingSummary } = await supabaseAdmin
+        .from('summaries')
+        .select('*')
+        .eq('document_id', documentId)
+        .eq('user_id', user.id)
+        .eq('language', language)
+        .eq('style', resolvedMode)
+        .eq('is_active', true)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
 
-    if (existingSummary && !body.forceRegenerate) {
-      // Return cached summary
-      return NextResponse.json({
-        summary: existingSummary,
-        cached: true
-      });
+      if (existingSummary) {
+        return NextResponse.json({ summary: existingSummary, cached: true });
+      }
     }
 
     // Generate new summary using AI
     const summaryOptions: SummaryOptions = {
       language,
       style,
+      fileType,
+      summaryMode: resolvedMode,
+      pageRange: resolvedMode === 'page-range' ? pageRange : undefined,
       maxBulletPoints: style === 'bullet-points' ? (maxBulletPoints || 4) : undefined,
-      customInstructions
+      customInstructions,
     };
 
     const result = await generateSummary(documentText, summaryOptions);
 
-    // Save summary to database
+    // Save summary to database (content is clean Markdown)
     const { data: newSummary, error: insertError } = await supabaseAdmin
       .from('summaries')
       .insert({
@@ -167,7 +205,7 @@ export async function POST(request: NextRequest) {
         summary_length: result.content.length,
         model_used: 'gpt-4o-mini',
         language,
-        style,
+        style: resolvedMode,
         max_bullet_points: maxBulletPoints,
         custom_instructions: customInstructions,
         input_tokens: result.inputTokens,
@@ -180,12 +218,11 @@ export async function POST(request: NextRequest) {
 
     if (insertError) {
       console.error('Failed to save summary:', insertError);
-      // Return the summary anyway, but note it wasn't cached
       return NextResponse.json({
         summary: {
           summary_content: result.content,
           language,
-          style,
+          style: resolvedMode,
           model_used: 'gpt-4o-mini',
           created_at: new Date().toISOString()
         },
@@ -194,10 +231,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    return NextResponse.json({
-      summary: newSummary,
-      cached: false
-    });
+    return NextResponse.json({ summary: newSummary, cached: false });
 
   } catch (error) {
     console.error('Summary generation error:', error);

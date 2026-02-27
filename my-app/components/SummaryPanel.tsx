@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
-import { Summary, Language, SummaryStyle } from '@/lib/types/database';
+import { Summary, Language, SummaryStyle, FileType, PdfSummaryMode, TxtSummaryMode, SummaryMode } from '@/lib/types/database';
 
 interface SummaryPanelProps {
   documentId: string;
   userKey: string;
+  fileType: FileType;
 }
 
 const LANGUAGES: { value: Language; label: string }[] = [
@@ -25,7 +26,18 @@ const STYLES: { value: SummaryStyle; label: string; description: string }[] = [
   { value: 'vivid-emoji', label: 'Vivid & Fun 🎉', description: 'Engaging with emojis' },
 ];
 
-export default function SummaryPanel({ documentId, userKey }: SummaryPanelProps) {
+const PDF_MODES: { value: PdfSummaryMode; label: string; icon: string; description: string }[] = [
+  { value: 'full-summary', label: 'Full Summary', icon: '📑', description: 'Comprehensive overview of entire document' },
+  { value: 'chapter-outline', label: 'By Chapter / Section', icon: '📖', description: 'Break down by detected chapters or headings' },
+  { value: 'page-range', label: 'Page Range', icon: '🎯', description: 'Summarise specific pages only' },
+];
+
+const TXT_MODES: { value: TxtSummaryMode; label: string; icon: string; description: string }[] = [
+  { value: 'semantic-topics', label: 'Smart Topic Analysis', icon: '🧠', description: 'AI identifies and groups core themes' },
+  { value: 'meeting-minutes', label: 'Meeting Minutes', icon: '👥', description: 'Extract decisions, action items & highlights' },
+];
+
+export default function SummaryPanel({ documentId, userKey, fileType }: SummaryPanelProps) {
   const [summary, setSummary] = useState<Summary | null>(null);
   const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
@@ -38,10 +50,28 @@ export default function SummaryPanel({ documentId, userKey }: SummaryPanelProps)
   const [language, setLanguage] = useState<Language>('English');
   const [style, setStyle] = useState<SummaryStyle>('standard');
   const [maxBulletPoints, setMaxBulletPoints] = useState(4);
-  const [showOptions, setShowOptions] = useState(true);
+  const [summaryMode, setSummaryMode] = useState<SummaryMode>(
+    fileType === 'pdf' ? 'full-summary' : 'semantic-topics'
+  );
+  const [pageFrom, setPageFrom] = useState(1);
+  const [pageTo, setPageTo] = useState(10);
+
+  // Ref for scrolling the panel to the top when switching views
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  const scrollToTop = useCallback(() => {
+    // Scroll the nearest scrollable ancestor (overflow-y-auto parent) to top
+    panelRef.current?.closest('.overflow-y-auto')?.scrollTo({ top: 0, behavior: 'instant' });
+  }, []);
+
+  // Reset mode when fileType changes
+  useEffect(() => {
+    setSummaryMode(fileType === 'pdf' ? 'full-summary' : 'semantic-topics');
+  }, [fileType]);
 
   // Fetch existing summary on mount
   const fetchExistingSummary = useCallback(async () => {
+    setSummary(null);
     setLoading(true);
     setError(null);
 
@@ -60,10 +90,8 @@ export default function SummaryPanel({ documentId, userKey }: SummaryPanelProps)
       if (data.summary) {
         setSummary(data.summary);
         setLanguage(data.summary.language);
-        setStyle(data.summary.style);
-        setShowOptions(false);
       }
-    } catch (err) {
+    } catch {
       // No existing summary is fine, don't show error
       console.log('No existing summary found');
     } finally {
@@ -91,6 +119,8 @@ export default function SummaryPanel({ documentId, userKey }: SummaryPanelProps)
           documentId,
           language,
           style,
+          summaryMode,
+          pageRange: summaryMode === 'page-range' ? { from: pageFrom, to: pageTo } : undefined,
           maxBulletPoints: style === 'bullet-points' ? maxBulletPoints : undefined,
           forceRegenerate,
         }),
@@ -103,7 +133,6 @@ export default function SummaryPanel({ documentId, userKey }: SummaryPanelProps)
 
       const data = await response.json();
       setSummary(data.summary);
-      setShowOptions(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to generate summary');
     } finally {
@@ -139,6 +168,7 @@ export default function SummaryPanel({ documentId, userKey }: SummaryPanelProps)
       const data = await response.json();
       setSummary(data.summary);
       setIsEditing(false);
+      scrollToTop();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save summary');
     } finally {
@@ -151,6 +181,7 @@ export default function SummaryPanel({ documentId, userKey }: SummaryPanelProps)
     if (summary) {
       setEditContent(summary.summary_content);
       setIsEditing(true);
+      scrollToTop();
     }
   };
 
@@ -158,6 +189,7 @@ export default function SummaryPanel({ documentId, userKey }: SummaryPanelProps)
   const cancelEditing = () => {
     setIsEditing(false);
     setEditContent('');
+    scrollToTop();
   };
 
   if (loading) {
@@ -172,7 +204,7 @@ export default function SummaryPanel({ documentId, userKey }: SummaryPanelProps)
   }
 
   return (
-    <div className="rounded-xl">
+    <div className="rounded-xl" ref={panelRef}>
       <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
         <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-gray-900 mr-3">
           <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -182,22 +214,84 @@ export default function SummaryPanel({ documentId, userKey }: SummaryPanelProps)
         AI Summary
       </h3>
 
-      {/* Configuration Options */}
-      {showOptions && (
+      {/* Configuration Panel - shown when no summary yet */}
+      {!summary && (
         <div className="space-y-5 mb-6 p-4 sm:p-5 bg-gray-50 rounded-xl border border-gray-200/80 shadow-sm">
-          <div className="flex items-center justify-between">
-            <h4 className="font-semibold text-gray-800 text-sm uppercase tracking-wide">Configuration</h4>
-            {summary && (
-              <button
-                onClick={() => setShowOptions(false)}
-                className="text-xs text-gray-400 hover:text-gray-600 transition-colors"
-              >
-                Collapse
-              </button>
-            )}
+
+          {/* Summary Mode Selection */}
+          <div>
+            <label className="block text-sm font-medium text-gray-600 mb-2">
+              {fileType === 'pdf' ? '📄 PDF Summary Mode' : '📝 Text Summary Mode'}
+            </label>
+            <div className="grid grid-cols-1 gap-2">
+              {(fileType === 'pdf' ? PDF_MODES : TXT_MODES).map((mode) => (
+                <button
+                  key={mode.value}
+                  type="button"
+                  onClick={() => setSummaryMode(mode.value as SummaryMode)}
+                  disabled={generating}
+                  className={`relative flex items-start gap-3 p-3 rounded-xl border-2 text-left transition-all duration-200 ${
+                    summaryMode === mode.value
+                      ? 'border-gray-900 bg-gray-50 shadow-sm'
+                      : 'border-gray-100 bg-white hover:border-gray-200 hover:bg-gray-50'
+                  } ${generating ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                >
+                  <span className="text-lg flex-shrink-0 mt-0.5">{mode.icon}</span>
+                  <div className="flex-1 min-w-0">
+                    <span className={`text-sm font-semibold block ${summaryMode === mode.value ? 'text-gray-900' : 'text-gray-700'}`}>
+                      {mode.label}
+                    </span>
+                    <span className={`text-xs mt-0.5 block ${summaryMode === mode.value ? 'text-gray-600' : 'text-gray-400'}`}>
+                      {mode.description}
+                    </span>
+                  </div>
+                  {summaryMode === mode.value && (
+                    <div className="absolute -top-1 -right-1 w-5 h-5 bg-gray-900 rounded-full flex items-center justify-center shadow-sm">
+                      <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                      </svg>
+                    </div>
+                  )}
+                </button>
+              ))}
+            </div>
           </div>
 
-          {/* Language Selection - Custom styled dropdown */}
+          {/* Page Range Input (only for page-range mode) */}
+          {summaryMode === 'page-range' && (
+            <div className="p-3 bg-blue-50/50 rounded-xl border border-blue-100">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                🎯 Specify Page Range
+              </label>
+              <div className="flex items-center gap-3">
+                <div className="flex-1">
+                  <label className="block text-xs text-gray-500 mb-1">From Page</label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={pageFrom}
+                    onChange={(e) => setPageFrom(Math.max(1, parseInt(e.target.value) || 1))}
+                    className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-800 focus:ring-2 focus:ring-gray-900/20 focus:border-gray-900"
+                    disabled={generating}
+                  />
+                </div>
+                <span className="text-gray-400 mt-5">—</span>
+                <div className="flex-1">
+                  <label className="block text-xs text-gray-500 mb-1">To Page</label>
+                  <input
+                    type="number"
+                    min={pageFrom}
+                    value={pageTo}
+                    onChange={(e) => setPageTo(Math.max(pageFrom, parseInt(e.target.value) || pageFrom))}
+                    className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-800 focus:ring-2 focus:ring-gray-900/20 focus:border-gray-900"
+                    disabled={generating}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Language Selection */}
           <div>
             <label className="block text-sm font-medium text-gray-600 mb-2">
               Output Language
@@ -223,7 +317,7 @@ export default function SummaryPanel({ documentId, userKey }: SummaryPanelProps)
             </div>
           </div>
 
-          {/* Style Selection - Card style */}
+          {/* Style Selection */}
           <div>
             <label className="block text-sm font-medium text-gray-600 mb-2">
               Summary Style
@@ -263,7 +357,7 @@ export default function SummaryPanel({ documentId, userKey }: SummaryPanelProps)
           {style === 'bullet-points' && (
             <div className="p-3 bg-blue-50/50 rounded-xl border border-blue-100">
               <label className="flex items-center justify-between text-sm font-medium text-gray-700 mb-2">
-                <span>Bullet Points</span>
+                <span>Bullet Points per Section</span>
                 <span className="text-gray-900 font-bold text-lg">{maxBulletPoints}</span>
               </label>
               <input
@@ -284,7 +378,7 @@ export default function SummaryPanel({ documentId, userKey }: SummaryPanelProps)
 
           {/* Generate Button */}
           <button
-            onClick={() => handleGenerate(!!summary)}
+            onClick={() => handleGenerate(false)}
             disabled={generating}
             className="group w-full py-3 px-4 bg-gray-900 text-white font-semibold rounded-xl hover:bg-black focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-md hover:shadow-lg active:scale-[0.98]"
           >
@@ -295,13 +389,6 @@ export default function SummaryPanel({ documentId, userKey }: SummaryPanelProps)
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
                 AI is thinking...
-              </span>
-            ) : summary ? (
-              <span className="flex items-center justify-center">
-                <svg className="w-4 h-4 mr-2 group-hover:rotate-180 transition-transform duration-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-                Regenerate Summary
               </span>
             ) : (
               <span className="flex items-center justify-center">
@@ -323,9 +410,9 @@ export default function SummaryPanel({ documentId, userKey }: SummaryPanelProps)
       )}
 
       {/* Summary Display */}
-      {summary && !showOptions && (
-        <div className="space-y-4">
-          {/* Summary Info */}
+      {summary && (
+        <div className="space-y-5">
+          {/* Summary Info Bar */}
           <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-gray-500">
             <div className="flex items-center flex-wrap gap-2">
               <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold bg-gray-200 text-gray-800">
@@ -345,14 +432,14 @@ export default function SummaryPanel({ documentId, userKey }: SummaryPanelProps)
             </span>
           </div>
 
-          {/* Summary Content */}
+          {/* Editing Mode */}
           {isEditing ? (
             <div className="space-y-3">
               <textarea
                 value={editContent}
                 onChange={(e) => setEditContent(e.target.value)}
                 className="w-full h-64 p-4 font-mono text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-gray-900/20 focus:border-gray-900 transition-all resize-y"
-                placeholder="Edit your summary here..."
+                placeholder="Edit your summary (Markdown supported)..."
               />
               <div className="flex space-x-2">
                 <button
@@ -372,8 +459,11 @@ export default function SummaryPanel({ documentId, userKey }: SummaryPanelProps)
               </div>
             </div>
           ) : (
-            <div className="bg-white rounded-xl border border-gray-200/80 p-4 sm:p-5 prose prose-sm max-w-none shadow-sm">
-              <ReactMarkdown>{summary.summary_content}</ReactMarkdown>
+            /* Markdown Rendered View */
+            <div className="bg-white rounded-xl border border-gray-200/80 p-4 sm:p-5 shadow-sm">
+              <div className="prose prose-sm max-w-none prose-headings:text-gray-900 prose-p:text-gray-700 prose-li:text-gray-700 prose-strong:text-gray-900">
+                <ReactMarkdown>{summary.summary_content}</ReactMarkdown>
+              </div>
             </div>
           )}
 
@@ -390,14 +480,13 @@ export default function SummaryPanel({ documentId, userKey }: SummaryPanelProps)
                 Edit
               </button>
               <button
-                onClick={() => setShowOptions(true)}
+                onClick={() => { setSummary(null); scrollToTop(); }}
                 className="inline-flex items-center px-3 py-2 text-sm font-medium text-gray-600 bg-white rounded-lg border border-gray-200 hover:bg-gray-50 hover:border-gray-300 transition-all shadow-sm"
               >
                 <svg className="w-3.5 h-3.5 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                 </svg>
-                Options
+                Regenerate
               </button>
               <button
                 onClick={() => {
@@ -412,27 +501,6 @@ export default function SummaryPanel({ documentId, userKey }: SummaryPanelProps)
               </button>
             </div>
           )}
-        </div>
-      )}
-
-      {/* No Summary State */}
-      {!summary && !showOptions && !generating && (
-        <div className="text-center py-10">
-          <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-gray-100 flex items-center justify-center">
-            <svg className="w-7 h-7 text-gray-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-            </svg>
-          </div>
-          <p className="text-gray-500 mb-4 text-sm">No summary generated yet</p>
-          <button
-            onClick={() => setShowOptions(true)}
-            className="inline-flex items-center px-5 py-2.5 bg-gray-900 text-white text-sm font-semibold rounded-xl hover:bg-black transition-all shadow-md hover:shadow-lg active:scale-[0.98]"
-          >
-            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-            </svg>
-            Generate Summary
-          </button>
         </div>
       )}
     </div>

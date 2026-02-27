@@ -175,7 +175,7 @@ export default function DocumentViewer({ document, userKey, onClose }: DocumentV
             )}
 
             {activeTab === 'summary' && (
-              <SummaryPanel documentId={document.id} userKey={userKey} />
+              <SummaryPanel documentId={document.id} userKey={userKey} fileType={document.file_type} />
             )}
           </div>
 

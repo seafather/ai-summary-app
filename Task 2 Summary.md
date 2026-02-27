@@ -9,7 +9,7 @@ Website: https://supabase.com/
 - Make regular commits to the repository and push the update to Github.
 - Capture and paste the screenshots of your steps during development and how you test the app. Show a screenshot of the documents stored in your Supabase Object Database.
 
-Test the app in your local development environment, then deploy the app to Vercel and ensure all functionality works as expected in the deployed environment.
+Test the app in your local development environment, then deploy the app to Vercel and ensure all functionality works as expected in the deployed environment.◊
 
 **Steps with major screenshots:**
 
@@ -24,8 +24,13 @@ after finished the database diagram, copy the sql command and create it on supab
 
 now, we can implement the design though basic requirement.md and database_schema.md.
 As you can see, I uploaded a PDF, and both the website and the database have received it.
-![alt text](image-8.png)
-![alt text](image-9.png)
+![alt text](image-11.png)
+![alt text](image-10.png)
+the follow is some capture about test:
+delete txt file ![alt text](image-12.png)
+now only one PDF file left
+![alt text](image-13.png)
+
 
 
 
