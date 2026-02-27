@@ -1,17 +1,26 @@
+// pdf-parse v1.x - require style import for CommonJS module
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const pdfParse = require('pdf-parse');
+
 /**
- * Extract text from a PDF file buffer
+ * Extract text from a PDF file buffer.
+ *
+ * Uses pdf-parse v1.x which is more stable in serverless environments.
  */
 export async function extractTextFromPDF(buffer: Buffer): Promise<string> {
   try {
-    // pdf-parse v2 exports a PDFParse class, not a default function
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { PDFParse } = require('pdf-parse');
-    const parser = new PDFParse({ data: new Uint8Array(buffer) });
-    const result = await parser.getText();
-    await parser.destroy();
-    return result.text.trim();
+    // pdf-parse v1.x takes buffer directly and returns { text, numpages, info }
+    const data = await pdfParse(buffer);
+    
+    const text = data.text?.trim();
+    if (!text) {
+      throw new Error('PDF appears to be empty or contains no extractable text');
+    }
+    
+    return text;
   } catch (error) {
-    console.error('PDF text extraction error:', error);
+    // Log the real error so it appears in Vercel function logs
+    console.error('PDF text extraction error:', error instanceof Error ? error.stack : error);
     throw new Error('Failed to extract text from PDF');
   }
 }

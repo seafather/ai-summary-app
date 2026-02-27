@@ -28,8 +28,10 @@ function getOrCreateClient(): SupabaseClient {
 export const supabaseAdmin = new Proxy({} as SupabaseClient, {
   get(_target, prop) {
     const client = getOrCreateClient();
-    const value = (client as Record<string | symbol, unknown>)[prop as string];
-    return typeof value === 'function' ? (value as Function).bind(client) : value;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const value = (client as unknown as Record<string | symbol, any>)[prop];
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+    return typeof value === 'function' ? value.bind(client) : value;
   },
 });
 

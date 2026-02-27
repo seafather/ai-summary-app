@@ -57,7 +57,7 @@ test with txt
 ![alt text](image-16.png)
 ![alt text](image-15.png)
 
-test with pdf
+test with pdf： PDF can be displayed normally even if it has more than one hundred pages.
 ![alt text](image-18.png)
 ![alt text](image-17.png)
 ![alt text](image-19.png)
@@ -77,9 +77,25 @@ Test the app in your local development environment, then deploy the app to Verce
 **Steps with major screenshots:**
 
 > [your steps and screenshots go here]
+Deployment successful
+create new user name:87654321
+![alt text](image-20.png)
+![alt text](image-21.png)
 
+upload new pdf
+![alt text](image-22.png)
+![alt text](image-23.png)
+
+test ai summary
+![alt text](image-24.png)
+![alt text](image-25.png)
 
 ## Section 9: Additional Features [OPTIONAL]
 Implement at least one additional features that you think is useful that can better differentiate your app from others. Describe the feature that you have implemented and provide a screenshot of your app with the new feature.
 
 > [Description of your additional features with screenshot goes here]
+login:To separate each user's files, we use identity verification, but no password is required; simply input a string of identification symbols to bind.
+![alt text](image-26.png)
+
+support smart phone resolution
+![alt text](image-27.png)

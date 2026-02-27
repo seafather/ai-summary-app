@@ -4,6 +4,12 @@ import { getOrCreateUser } from '@/lib/utils/user';
 
 export const runtime = 'nodejs';
 
+// UUID validation helper
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+function isValidUUID(str: string): boolean {
+  return typeof str === 'string' && UUID_REGEX.test(str);
+}
+
 interface RouteParams {
   params: Promise<{
     documentId: string;
@@ -16,6 +22,14 @@ interface RouteParams {
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
     const { documentId } = await params;
+    
+    // Validate UUID format
+    if (!isValidUUID(documentId)) {
+      return NextResponse.json(
+        { error: 'Invalid document ID format' },
+        { status: 400 }
+      );
+    }
     
     // Get user key from header
     const userKey = request.headers.get('x-user-key');
@@ -72,6 +86,14 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
   try {
     const { documentId } = await params;
+    
+    // Validate UUID format
+    if (!isValidUUID(documentId)) {
+      return NextResponse.json(
+        { error: 'Invalid document ID format' },
+        { status: 400 }
+      );
+    }
     
     // Get user key from header
     const userKey = request.headers.get('x-user-key');

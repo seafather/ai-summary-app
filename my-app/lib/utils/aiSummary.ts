@@ -384,12 +384,19 @@ export async function generateSummary(
     ? `Please summarize the following document content (pages ${options.pageRange?.from ?? 1} to ${options.pageRange?.to ?? 'end'}). Return only a valid JSON object.${truncationNote}\n\n---\n${trimmedText}\n---`
     : `Please analyze and summarize the following document. Return only a valid JSON object.${truncationNote}\n\n---\n${trimmedText}\n---`;
 
+  // Validate GITHUB_TOKEN before making API call
+  const githubToken = process.env.GITHUB_TOKEN;
+  if (!githubToken) {
+    console.error('GITHUB_TOKEN environment variable is not set');
+    throw new Error('AI service is not configured. Please set GITHUB_TOKEN.');
+  }
+
   try {
     const response = await fetch('https://models.inference.ai.azure.com/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.GITHUB_TOKEN}`,
+        'Authorization': `Bearer ${githubToken}`,
       },
       body: JSON.stringify({
         model: 'gpt-4o-mini',
@@ -406,7 +413,15 @@ export async function generateSummary(
     if (!response.ok) {
       const errBody = await response.text();
       console.error('GitHub Models API HTTP error:', response.status, errBody);
-      throw new Error(`API returned ${response.status}: ${errBody}`);
+      
+      // Parse error to provide better message
+      try {
+        const errJson = JSON.parse(errBody);
+        const message = errJson.error?.message || errJson.message || errBody;
+        throw new Error(`AI API error: ${message}`);
+      } catch {
+        throw new Error(`AI API error (${response.status}): ${errBody}`);
+      }
     }
 
     const data = await response.json();

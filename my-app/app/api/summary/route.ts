@@ -6,6 +6,12 @@ import { generateSummary, SummaryOptions } from '@/lib/utils/aiSummary';
 import { Language, SummaryStyle, SummaryMode, FileType } from '@/lib/types/database';
 
 export const runtime = 'nodejs';
+
+// UUID validation helper
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+function isValidUUID(str: string): boolean {
+  return typeof str === 'string' && UUID_REGEX.test(str);
+}
 export const maxDuration = 60; // Allow up to 60 seconds for AI generation
 
 /**
@@ -48,6 +54,13 @@ export async function POST(request: NextRequest) {
     if (!documentId) {
       return NextResponse.json(
         { error: 'Document ID is required' },
+        { status: 400 }
+      );
+    }
+
+    if (!isValidUUID(documentId)) {
+      return NextResponse.json(
+        { error: 'Invalid document ID format' },
         { status: 400 }
       );
     }
