@@ -69,7 +69,7 @@ function buildPdfFullSummaryPrompt(options: SummaryOptions): string {
   return `You are a professional document summarizer and analyst.
 
 ### YOUR TASK
-Read the provided **PDF document** and produce a comprehensive summary in **Markdown** format.
+Read the provided **PDF document** and produce a comprehensive summary.
 
 ### LANGUAGE RULES
 ${getLanguageRules(options.language)}
@@ -78,25 +78,31 @@ ${getLanguageRules(options.language)}
 ${getStyleInstructions(options.style, options.maxBulletPoints)}
 
 ### OUTPUT FORMAT
-Return **only** well-formatted Markdown. Structure your output as follows:
+Return **only** a valid JSON object with NO extra text, NO markdown fences. Use exactly this structure:
 
-## Executive Summary
-A concise 2-3 sentence overview of the entire document.
-
-## Key Findings
-The most important points, insights, or arguments from the document.
-
-## Key Terms
-Important terms or concepts mentioned in the document, each with a brief definition.
-
-## Related Questions
-3-5 follow-up questions a reader might ask after reading the document.
+{
+  "mode": "full-summary",
+  "executiveSummary": "A concise 2-3 sentence overview of the entire document.",
+  "keyFindings": [
+    "Most important point 1",
+    "Most important point 2"
+  ],
+  "keyTerms": [
+    { "term": "Term name", "definition": "Brief definition" }
+  ],
+  "relatedQuestions": [
+    "Follow-up question 1?",
+    "Follow-up question 2?"
+  ]
+}
 
 ### ADDITIONAL GUIDELINES
-- Extract and present the most important information.
+- All string values must be valid JSON strings (escape quotes, no unescaped newlines).
+- keyFindings: 4-8 items covering the most important insights.
+- keyTerms: 3-8 important terms from the document.
+- relatedQuestions: 3-5 thoughtful follow-up questions.
 - Maintain accuracy — never fabricate information not in the document.
-- If page numbers are discernible, reference them naturally (e.g., "As discussed on page 5...").
-- Adapt summary length to the document: short documents get shorter summaries.
+- Adapt content length to the document: short documents get shorter summaries.
 ${options.customInstructions ? `\n### USER CUSTOM INSTRUCTIONS\n${options.customInstructions}` : ''}`;
 }
 
@@ -114,30 +120,29 @@ ${getLanguageRules(options.language)}
 ${getStyleInstructions(options.style, options.maxBulletPoints)}
 
 ### OUTPUT FORMAT
-Return **only** well-formatted Markdown. Use this structure:
+Return **only** a valid JSON object with NO extra text, NO markdown fences. Use exactly this structure:
 
-## Document Overview
-A brief 1-2 sentence overview of the entire document.
-
-## Chapter / Section Breakdown
-
-### [Chapter/Section Title or Topic 1]
-**Pages:** [page range if detectable, e.g., "pp. 1-5", or "N/A"]
-[Summary of this chapter/section]
-
-### [Chapter/Section Title or Topic 2]
-**Pages:** [page range if detectable]
-[Summary of this chapter/section]
-
-_(Continue for each detected chapter/section)_
-
-## Key Terms
-Important terms or concepts, each with a brief definition.
+{
+  "mode": "chapter-outline",
+  "documentOverview": "A brief 1-2 sentence overview of the entire document.",
+  "chapters": [
+    {
+      "title": "Chapter or Section Title",
+      "pages": "pp. 1-5 (or null if not detectable)",
+      "summary": "Summary of this chapter/section"
+    }
+  ],
+  "keyTerms": [
+    { "term": "Term name", "definition": "Brief definition" }
+  ]
+}
 
 ### ADDITIONAL GUIDELINES
+- All string values must be valid JSON strings (escape quotes, no unescaped newlines).
 - Detect chapter boundaries from headings, large font text, page breaks, or topic shifts.
-- If the PDF has no clear chapter structure, divide by major topic shifts.
-- Reference page numbers where possible.
+- If no clear chapters exist, divide by major topic shifts (aim for 3-8 chapters).
+- Set "pages" to null if page numbers are not detectable.
+- keyTerms: 3-8 important terms from the document.
 - Maintain accuracy — never fabricate information not in the document.
 ${options.customInstructions ? `\n### USER CUSTOM INSTRUCTIONS\n${options.customInstructions}` : ''}`;
 }
@@ -158,20 +163,26 @@ ${getLanguageRules(options.language)}
 ${getStyleInstructions(options.style, options.maxBulletPoints)}
 
 ### OUTPUT FORMAT
-Return **only** well-formatted Markdown:
+Return **only** a valid JSON object with NO extra text, NO markdown fences. Use exactly this structure:
 
-## Summary (Pages ${from}–${to})
-[Comprehensive summary of the specified page range]
-
-## Key Points
-The most important findings or arguments from this specific section.
-
-## Key Terms
-Important terms appearing in this page range, each with a brief definition.
+{
+  "mode": "page-range",
+  "pageRange": { "from": ${from}, "to": ${typeof to === 'number' ? to : JSON.stringify(to)} },
+  "summary": "Comprehensive summary of pages ${from} to ${to}.",
+  "keyPoints": [
+    "Most important finding or argument 1",
+    "Most important finding or argument 2"
+  ],
+  "keyTerms": [
+    { "term": "Term name", "definition": "Brief definition" }
+  ]
+}
 
 ### ADDITIONAL GUIDELINES
-- Focus exclusively on content within the specified page range.
-- Reference page numbers naturally where possible.
+- All string values must be valid JSON strings (escape quotes, no unescaped newlines).
+- Focus exclusively on content within pages ${from}–${to}.
+- keyPoints: 3-6 most important findings from this page range.
+- keyTerms: 2-6 important terms appearing in this page range.
 - Maintain accuracy — never fabricate information.
 ${options.customInstructions ? `\n### USER CUSTOM INSTRUCTIONS\n${options.customInstructions}` : ''}`;
 }
@@ -190,32 +201,33 @@ ${getLanguageRules(options.language)}
 ${getStyleInstructions(options.style, options.maxBulletPoints)}
 
 ### OUTPUT FORMAT
-Return **only** well-formatted Markdown:
+Return **only** a valid JSON object with NO extra text, NO markdown fences. Use exactly this structure:
 
-## Executive Summary
-A concise 2-3 sentence overview of the entire text.
-
-## Topic Analysis
-
-### [Topic 1 Title]
-[Summary of this topic / theme]
-
-### [Topic 2 Title]
-[Summary of this topic / theme]
-
-_(Continue for each identified topic — aim for 3-6 topics)_
-
-## Key Terms
-Important terms or concepts mentioned in the text, each with a brief definition.
-
-## Related Questions
-3-5 follow-up questions a reader might ask.
+{
+  "mode": "semantic-topics",
+  "executiveSummary": "A concise 2-3 sentence overview of the entire text.",
+  "topics": [
+    {
+      "title": "Topic Title",
+      "summary": "Summary of this topic / theme"
+    }
+  ],
+  "keyTerms": [
+    { "term": "Term name", "definition": "Brief definition" }
+  ],
+  "relatedQuestions": [
+    "Follow-up question 1?",
+    "Follow-up question 2?"
+  ]
+}
 
 ### ADDITIONAL GUIDELINES
-- Identify natural topics from the content — do NOT fabricate topics.
+- All string values must be valid JSON strings (escape quotes, no unescaped newlines).
+- topics: 3-6 items; identify natural topics from the content — do NOT fabricate topics.
 - Group related paragraphs that discuss the same theme.
+- keyTerms: 3-8 important terms.
+- relatedQuestions: 3-5 thoughtful follow-up questions.
 - Maintain accuracy — never add information not in the original text.
-- Adapt the number of topics to the text length: short texts may have 2-3 topics, long texts up to 6.
 ${options.customInstructions ? `\n### USER CUSTOM INSTRUCTIONS\n${options.customInstructions}` : ''}`;
 }
 
@@ -233,35 +245,31 @@ ${getLanguageRules(options.language)}
 ${getStyleInstructions(options.style, options.maxBulletPoints)}
 
 ### OUTPUT FORMAT
-Return **only** well-formatted Markdown:
+Return **only** a valid JSON object with NO extra text, NO markdown fences. Use exactly this structure:
 
-## Meeting Overview
-A brief summary of what the meeting / discussion was about, including participants if identifiable.
-
-## Key Decisions
-Bullet list of decisions made during the meeting / discussion.
-- [Decision 1]
-- [Decision 2]
-
-## Action Items
-Tasks or follow-ups that were assigned or mentioned.
-- [ ] [Action item 1] — *Owner (if identifiable)*
-- [ ] [Action item 2] — *Owner (if identifiable)*
-
-## Discussion Highlights
-The most important topics discussed, with brief summaries for each.
-
-### [Discussion Point 1]
-[Summary]
-
-### [Discussion Point 2]
-[Summary]
-
-## Open Questions / Unresolved Issues
-Any questions or issues that were raised but not resolved.
+{
+  "mode": "meeting-minutes",
+  "meetingOverview": "A brief summary of what the meeting was about, including participants if identifiable.",
+  "keyDecisions": [
+    "Decision 1",
+    "Decision 2"
+  ],
+  "actionItems": [
+    { "task": "Task description", "owner": "Person name or null" }
+  ],
+  "discussionHighlights": [
+    { "topic": "Discussion topic title", "summary": "Summary of the discussion" }
+  ],
+  "openQuestions": [
+    "Unresolved question or issue 1"
+  ]
+}
 
 ### ADDITIONAL GUIDELINES
-- If the text is clearly NOT a meeting or conversation, still extract the most relevant structured information using the same format but adapt section titles accordingly (e.g., "Key Findings" instead of "Key Decisions").
+- All string values must be valid JSON strings (escape quotes, no unescaped newlines).
+- If the text is clearly NOT a meeting or conversation, still use the same JSON structure but adapt field content (e.g., keyDecisions becomes key conclusions).
+- Set owner to null if no owner is identifiable for an action item.
+- openQuestions may be an empty array [] if there are none.
 - Identify speakers/participants if the text contains names or speaker labels.
 - Maintain accuracy — never fabricate information not present in the text.
 ${options.customInstructions ? `\n### USER CUSTOM INSTRUCTIONS\n${options.customInstructions}` : ''}`;
@@ -373,8 +381,8 @@ export async function generateSummary(
     : '';
 
   const userMessage = options.summaryMode === 'page-range'
-    ? `Please summarize the following document content (pages ${options.pageRange?.from ?? 1} to ${options.pageRange?.to ?? 'end'}). Return only Markdown.${truncationNote}\n\n---\n${trimmedText}\n---`
-    : `Please analyze and summarize the following document. Return only Markdown.${truncationNote}\n\n---\n${trimmedText}\n---`;
+    ? `Please summarize the following document content (pages ${options.pageRange?.from ?? 1} to ${options.pageRange?.to ?? 'end'}). Return only a valid JSON object.${truncationNote}\n\n---\n${trimmedText}\n---`
+    : `Please analyze and summarize the following document. Return only a valid JSON object.${truncationNote}\n\n---\n${trimmedText}\n---`;
 
   try {
     const response = await fetch('https://models.inference.ai.azure.com/chat/completions', {
@@ -391,6 +399,7 @@ export async function generateSummary(
         ],
         max_tokens: 3000,
         temperature: 0.5,
+        response_format: { type: 'json_object' },
       }),
     });
 
@@ -401,20 +410,28 @@ export async function generateSummary(
     }
 
     const data = await response.json();
-    const text: string = data.choices?.[0]?.message?.content ?? '';
+    const rawText: string = data.choices?.[0]?.message?.content ?? '{}';
     const usage = data.usage;
 
-    // Remove markdown code fences if AI accidentally wraps response
-    let cleanContent = text.trim();
-    if (cleanContent.startsWith('```markdown')) {
-      cleanContent = cleanContent.slice('```markdown'.length);
-    } else if (cleanContent.startsWith('```')) {
-      cleanContent = cleanContent.slice(3);
+    // Validate that the response is parseable JSON; re-stringify for clean storage
+    let cleanContent: string;
+    try {
+      const parsed = JSON.parse(rawText);
+      cleanContent = JSON.stringify(parsed);
+    } catch {
+      // Fallback: strip any accidental code fences and retry
+      let stripped = rawText.trim();
+      if (stripped.startsWith('```')) {
+        stripped = stripped.replace(/^```[a-z]*\n?/, '').replace(/\n?```$/, '').trim();
+      }
+      try {
+        const parsed = JSON.parse(stripped);
+        cleanContent = JSON.stringify(parsed);
+      } catch {
+        // Last resort: store raw text so the client can still display something
+        cleanContent = rawText.trim();
+      }
     }
-    if (cleanContent.endsWith('```')) {
-      cleanContent = cleanContent.slice(0, -3);
-    }
-    cleanContent = cleanContent.trim();
 
     return {
       content: cleanContent,

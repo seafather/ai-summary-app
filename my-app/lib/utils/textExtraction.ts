@@ -1,14 +1,15 @@
-import { PDFParse } from 'pdf-parse';
-
 /**
  * Extract text from a PDF file buffer
  */
 export async function extractTextFromPDF(buffer: Buffer): Promise<string> {
   try {
-    const pdfParser = new PDFParse({ data: new Uint8Array(buffer) });
-    const textResult = await pdfParser.getText();
-    await pdfParser.destroy();
-    return textResult.text.trim();
+    // pdf-parse v2 exports a PDFParse class, not a default function
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { PDFParse } = require('pdf-parse');
+    const parser = new PDFParse({ data: new Uint8Array(buffer) });
+    const result = await parser.getText();
+    await parser.destroy();
+    return result.text.trim();
   } catch (error) {
     console.error('PDF text extraction error:', error);
     throw new Error('Failed to extract text from PDF');

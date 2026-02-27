@@ -51,6 +51,19 @@ Test the app in your local development environment, then deploy the app to Verce
 **Steps with major screenshots:**
 
 > [your steps and screenshots go here]
+implement the ai summary function by basic requirement.md, then test with that:
+
+test with txt
+![alt text](image-16.png)
+![alt text](image-15.png)
+
+test with pdf
+![alt text](image-18.png)
+![alt text](image-17.png)
+![alt text](image-19.png)
+
+
+
 
 
 ## Section 8: Database Integration with Supabase  
